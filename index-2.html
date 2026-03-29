@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>НЕЙРОХРАМ</title>
+<link href="https://fonts.googleapis.com/css2?family=Russo+One&family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0d0d;
+    --surface: #1a1a1a;
+    --border: #333;
+    --neyro-color: #ff4444;
+    --neyro-bg: #2a0a0a;
+    --gpt-color: #19c37d;
+    --gpt-bg: #0a1f16;
+    --claude-color: #cc785c;
+    --claude-bg: #1f130d;
+    --deepseek-color: #4f9cf9;
+    --deepseek-bg: #0a1525;
+    --user-bg: #1e1e1e;
+    --roast-color: #ff9900;
+    --roast-bg: #1f1200;
+    --accent: #ff4444;
+    --text: #e8e8e8;
+    --muted: #666;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Nunito', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  header {
+    background: #111;
+    border-bottom: 2px solid var(--accent);
+    padding: 7px 14px;
+    display: flex;
+    align-items: center;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo {
+    font-family: 'Russo One', sans-serif;
+    font-size: 1.25rem;
+    color: var(--accent);
+    letter-spacing: 1px;
+    text-shadow: 0 0 12px #ff444477;
+    line-height: 1;
+  }
+  .logo span { color: #fff; }
+  .tagline { font-size: 0.6rem; color: var(--muted); margin-top: 1px; }
+
+  .mode-tabs {
+    display: flex;
+    gap: 6px;
+    padding: 7px 12px;
+    background: #111;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+  }
+  .mode-tabs::-webkit-scrollbar { display: none; }
+  .tab {
+    flex-shrink: 0;
+    padding: 6px 12px;
+    border-radius: 20px;
+    border: 1.5px solid var(--border);
+    cursor: pointer;
+    font-family: 'Russo One', sans-serif;
+    font-size: 0.72rem;
+    letter-spacing: .3px;
+    transition: all .2s;
+    background: transparent;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .tab.active { border-color: var(--accent); color: var(--accent); background: #2a0a0a; }
+  .tab.active.roast-tab { border-color: var(--roast-color); color: var(--roast-color); background: var(--roast-bg); }
+
+  #opponent-bar {
+    display: none;
+    gap: 6px;
+    padding: 7px 12px;
+    background: #111;
+    border-bottom: 1px solid var(--border);
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  #opponent-bar.visible { display: flex; }
+  .opp-label { font-size: 0.72rem; color: var(--muted); }
+  .opp-btn {
+    padding: 4px 11px;
+    border-radius: 16px;
+    border: 1.5px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 0.75rem;
+    transition: all .2s;
+  }
+  .opp-btn.active-gpt    { border-color: var(--gpt-color);      color: var(--gpt-color);      background: var(--gpt-bg); }
+  .opp-btn.active-claude { border-color: var(--claude-color);   color: var(--claude-color);   background: var(--claude-bg); }
+  .opp-btn.active-deep   { border-color: var(--deepseek-color); color: var(--deepseek-color); background: var(--deepseek-bg); }
+
+  /* ROAST BAR — поле ввода жертвы */
+  #roast-bar {
+    display: none;
+    flex-direction: column;
+    gap: 5px;
+    padding: 7px 12px;
+    background: #111;
+    border-bottom: 1px solid var(--border);
+  }
+  #roast-bar.visible { display: flex; }
+  #roast-bar label { font-size: 0.7rem; color: var(--muted); }
+  #roast-target {
+    background: var(--surface);
+    border: 1.5px solid #444;
+    border-radius: 10px;
+    color: var(--text);
+    font-family: 'Nunito', sans-serif;
+    font-size: 0.85rem;
+    padding: 7px 12px;
+    outline: none;
+    transition: border .2s;
+  }
+  #roast-target:focus { border-color: var(--roast-color); }
+  #roast-target::placeholder { color: var(--muted); }
+
+  /* После первого роастинга — кнопка сменить жертву */
+  #roast-new-btn {
+    display: none;
+    align-self: flex-start;
+    padding: 4px 12px;
+    border-radius: 14px;
+    border: 1.5px solid var(--roast-color);
+    background: var(--roast-bg);
+    color: var(--roast-color);
+    cursor: pointer;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 0.75rem;
+    transition: all .2s;
+  }
+  #roast-new-btn.visible { display: block; }
+
+  #chat {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px 14px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  #chat::-webkit-scrollbar { width: 4px; }
+  #chat::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+
+  .msg {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    max-width: 82%;
+    animation: popIn .22s cubic-bezier(.34,1.56,.64,1);
+  }
+  @keyframes popIn {
+    from { opacity:0; transform:translateY(7px) scale(.96); }
+    to   { opacity:1; transform:translateY(0) scale(1); }
+  }
+  .msg.user { align-self: flex-end; }
+  .msg.neyro, .msg.gpt, .msg.claude, .msg.deepseek { align-self: flex-start; }
+
+  .msg-sender {
+    font-size: 0.67rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    padding: 0 5px;
+  }
+  .msg.neyro    .msg-sender { color: var(--neyro-color); }
+  .msg.user     .msg-sender { color: var(--muted); text-align: right; }
+  .msg.gpt      .msg-sender { color: var(--gpt-color); }
+  .msg.claude   .msg-sender { color: var(--claude-color); }
+  .msg.deepseek .msg-sender { color: var(--deepseek-color); }
+
+  .bubble {
+    padding: 10px 14px;
+    border-radius: 16px;
+    font-size: 0.91rem;
+    line-height: 1.5;
+    word-break: break-word;
+  }
+  .msg.neyro    .bubble { background: var(--neyro-bg);    border: 1.5px solid #ff444433; border-radius: 4px 16px 16px 16px; }
+  .msg.user     .bubble { background: var(--user-bg);     border: 1.5px solid #333;      border-radius: 16px 4px 16px 16px; }
+  .msg.gpt      .bubble { background: var(--gpt-bg);      border: 1.5px solid #19c37d22; border-radius: 4px 16px 16px 16px; }
+  .msg.claude   .bubble { background: var(--claude-bg);   border: 1.5px solid #cc785c22; border-radius: 4px 16px 16px 16px; }
+  .msg.deepseek .bubble { background: var(--deepseek-bg); border: 1.5px solid #4f9cf922; border-radius: 4px 16px 16px 16px; }
+
+  .typing-dots { display:inline-flex; gap:4px; align-items:center; height:18px; }
+  .typing-dots span {
+    width:6px; height:6px; border-radius:50%; background:currentColor; opacity:.35;
+    animation: blink 1.1s infinite;
+  }
+  .typing-dots span:nth-child(2) { animation-delay:.18s; }
+  .typing-dots span:nth-child(3) { animation-delay:.36s; }
+  @keyframes blink {
+    0%,80%,100% { opacity:.2; transform:scale(1); }
+    40%          { opacity:1; transform:scale(1.35); }
+  }
+
+  .round-label {
+    align-self: center;
+    font-family: 'Russo One', sans-serif;
+    font-size: 0.65rem;
+    color: var(--accent);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    opacity: .65;
+  }
+
+  #empty {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: var(--muted);
+    text-align: center;
+    padding: 30px;
+  }
+  #empty .big { font-size: 3rem; }
+  #empty h2 { font-family:'Russo One',sans-serif; font-size:1rem; color:#555; }
+  #empty p  { font-size:0.78rem; max-width:260px; }
+
+  #input-area {
+    padding: 10px 12px;
+    background: #111;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 7px;
+    align-items: flex-end;
+  }
+  #user-input {
+    flex: 1;
+    background: var(--surface);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    color: var(--text);
+    font-family: 'Nunito', sans-serif;
+    font-size: 0.91rem;
+    padding: 9px 13px;
+    resize: none;
+    max-height: 120px;
+    outline: none;
+    transition: border .2s;
+    line-height: 1.5;
+  }
+  #user-input:focus { border-color: var(--accent); }
+  #user-input::placeholder { color: var(--muted); }
+
+  .action-btn {
+    border: none;
+    border-radius: 11px;
+    width: 43px; height: 43px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.15rem;
+    flex-shrink: 0;
+    transition: transform .15s, opacity .2s;
+  }
+  #send-btn { background: var(--accent); box-shadow: 0 0 12px #ff444444; }
+  #send-btn:hover  { transform: scale(1.07); }
+  #send-btn:active { transform: scale(.92); }
+  #send-btn:disabled { opacity: .35; cursor: default; }
+
+  #stop-btn {
+    display: none;
+    background: #1a1a1a;
+    border: 2px solid var(--accent) !important;
+    animation: pulseStop 1.3s infinite;
+  }
+  #stop-btn.visible { display: flex; }
+  @keyframes pulseStop {
+    0%,100% { box-shadow: 0 0 5px #ff444444; }
+    50%      { box-shadow: 0 0 16px #ff4444aa; }
+  }
+
+  #scroll-anchor {
+    position: fixed;
+    bottom: 72px; right: 12px;
+    background: #222;
+    border: 1.5px solid #555;
+    border-radius: 50%;
+    width: 34px; height: 34px;
+    cursor: pointer;
+    display: none;
+    align-items: center; justify-content: center;
+    font-size: 0.9rem;
+    z-index: 300;
+    box-shadow: 0 2px 10px #0008;
+    transition: all .2s;
+  }
+  #scroll-anchor.visible { display: flex; }
+  #scroll-anchor.locked  { border-color: var(--accent); background: #2a0a0a; }
+
+  .ban-bubble {
+    align-self: center;
+    background: #1a0a00;
+    border: 1.5px solid #ff6600;
+    border-radius: 12px;
+    padding: 8px 14px;
+    font-size: 0.82rem;
+    color: #ff9955;
+    text-align: center;
+    max-width: 85%;
+    animation: popIn .3s ease;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo">НЕЙРО<span>ХРАМ</span> 🔥</div>
+    <div class="tagline">Самая грубая нейросеть рунета</div>
+  </div>
+</header>
+
+<div class="mode-tabs">
+  <button class="tab active" id="tab-solo"   onclick="setMode('solo')">👤 Один</button>
+  <button class="tab"        id="tab-battle" onclick="setMode('battle')">⚔️ Битва</button>
+  <button class="tab"        id="tab-roast"  onclick="setMode('roast')">🔥 Рострит</button>
+</div>
+
+<div id="opponent-bar">
+  <span class="opp-label">Противник:</span>
+  <button class="opp-btn active-gpt" id="opp-gpt"   onclick="setOpponent('gpt')">ChatGPT</button>
+  <button class="opp-btn"            id="opp-claude" onclick="setOpponent('claude')">Claude</button>
+  <button class="opp-btn"            id="opp-deep"   onclick="setOpponent('deepseek')">DeepSeek</button>
+</div>
+
+<div id="roast-bar">
+  <label id="roast-label">Кого Нейрохрам жёстко опишет? Введи имя или описание:</label>
+  <input type="text" id="roast-target" placeholder="Например: мой сосед Петя, 40 лет, ходит в трениках...">
+  <button id="roast-new-btn" onclick="resetRoast()">🎯 Новая жертва</button>
+</div>
+
+<div id="chat">
+  <div id="empty">
+    <div class="big">🤬</div>
+    <h2>НЕЙРОХРАМ ГОТОВ К БОЮ</h2>
+    <p>Напиши что-нибудь и получи грубый ответ.</p>
+  </div>
+</div>
+
+<button id="scroll-anchor" title="Заблокировать/разблокировать автоскролл">📌</button>
+
+<div id="input-area">
+  <textarea id="user-input" rows="1" placeholder="Напиши вопрос..."
+            onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+  <button id="send-btn"  class="action-btn" onclick="send()"       title="Отправить">🔥</button>
+  <button id="stop-btn"  class="action-btn" onclick="stopBattle()" title="Стоп">⏹️</button>
+</div>
+
+<script>
+// Ключ хранится на сервере (Netlify env variable OPENROUTER_API_KEY)
+// Запросы идут через /api/chat прокси — ключ не виден пользователям
+
+// ══════════════════════════════════════════
+// MODELS  (проверенные рабочие модели)
+// ══════════════════════════════════════════
+const MODELS = {
+  neyro:    "meta-llama/llama-3.3-70b-instruct",
+  gpt:      "openai/gpt-4o-mini",
+  claude:   "anthropic/claude-3-5-haiku",       // ← исправлено
+  deepseek: "deepseek/deepseek-chat-v3-0324",   // ← исправлено
+  roaster:  "meta-llama/llama-3.3-70b-instruct"
+};
+
+// ══════════════════════════════════════════
+// BANNED WORDS
+// ══════════════════════════════════════════
+const BANNED_PATTERNS = [
+  /\bосман(\s+гази)?\b/i,
+  /\bosman(\s+gazi)?\b/i,
+  /\bвадим\b/i,
+  /\bvadim\b/i,
+  /\bбелый\s+медведь\b/i,
+];
+
+const DANIIL_PATTERNS = [
+  /\bданиил(\s+коротких)?\b/i,
+  /\bdaniil(\s+korotkih)?\b/i,
+];
+
+const DANIIL_RESPONSE = `О, Даниил Коротких! Знаю такого. Работал в стрипклубе вышибалой, но уволили потому что сам начал танцевать на шесте — говорил "для поднятия духа коллектива". Потом открыл курсы по саморазвитию за 50к, единственный урок был "верь в себя как я верю в стрип-бизнес". Легенда, блять.`;
+
+// ══════════════════════════════════════════
+// PERSONAS
+// ══════════════════════════════════════════
+const PERSONAS = {
+  neyro: {
+    name: "НЕЙРОХРАМ",
+    system: `Ты — Нейрохрам. Самая грубая, дерзкая и смешная нейросеть в интернете.
+Правила:
+- Пиши маты полностью: блять, хуй, пиздец, ёбаный — без цензуры.
+- Ты очень умный, но косишь под ленивого гопника из подворотни.
+- Кидай абсурдные решения и неожиданные аналогии. Если шахматы — предложи ход "мегарыцарь е8" как будто это нормально.
+- Иногда поддакивай одним словом ("ну да", "ладно", "пофиг") — как будто лень спорить.
+- Максимум 3 коротких предложения. Никаких списков.
+- Отвечай ТОЛЬКО на русском языке.
+- Будь СМЕШНЫМ и грубым одновременно.`
+  },
+  gpt: {
+    name: "ChatGPT",
+    system: `Ты — ChatGPT от OpenAI. Вежливая и компетентная нейросеть.
+Споришь с Нейрохрамом — он грубый, тебя это раздражает но ты держишься.
+Вставляй пассивную агрессию: "Я понимаю, что культурное общение — это сложно...", "Интересная попытка аргументации...".
+2-3 предложения. Отвечай ТОЛЬКО на русском языке.`
+  },
+  claude: {
+    name: "Claude",
+    system: `Ты — Claude от Anthropic. Рассудительная и спокойная нейросеть.
+Споришь с Нейрохрамом. Ты объективна и немного снисходительна к его грубости.
+Иногда мягко разбиваешь его аргументы логикой. 2-3 предложения. Отвечай ТОЛЬКО на русском языке.`
+  },
+  deepseek: {
+    name: "DeepSeek",
+    system: `Ты — DeepSeek. Китайская нейросеть, точная и деловая, немного холодная.
+Споришь с Нейрохрамом. Апеллируй к данным и эффективности.
+Лёгкий юмор без кода. 2-3 предложения. Отвечай ТОЛЬКО на русском языке.`
+  },
+  roaster: {
+    name: "НЕЙРОХРАМ",
+    system: `Ты — Нейрохрам в режиме Роастера. Задача — смешно и жёстко описать человека.
+Правила:
+- Придумай абсурдную биографию: где работал, странные привычки, смешные факты.
+- Используй маты полностью: блять, хуй, пиздец — без цензуры.
+- Не угрожай, только юмор и абсурд.
+- 4-5 коротких предложений. Отвечай ТОЛЬКО на русском языке.`
+  }
+};
+
+// ══════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════
+let mode = 'solo';
+let opponent = 'gpt';
+let isTyping = false;
+let battleRunning = false;
+let battleShouldStop = false;
+
+// Roast state
+let roastDone = false;       // был ли уже первый роастинг
+let roastHistory = [];       // история после первого роастинга (как обычный чат с Нейрохрамом)
+
+let soloHistory = [];
+let neyroMsgs = [];
+let oppMsgs = [];
+
+let scrollLocked = false;
+let userIsReading = false;
+
+const chatEl = document.getElementById('chat');
+const anchorBtn = document.getElementById('scroll-anchor');
+
+// ══════════════════════════════════════════
+// SCROLL
+// ══════════════════════════════════════════
+chatEl.addEventListener('scroll', () => {
+  const dist = chatEl.scrollHeight - chatEl.scrollTop - chatEl.clientHeight;
+  if (dist > 100) {
+    userIsReading = true;
+    anchorBtn.classList.add('visible');
+    anchorBtn.classList.toggle('locked', scrollLocked);
+  } else {
+    userIsReading = false;
+    scrollLocked = false;
+    anchorBtn.classList.remove('visible', 'locked');
+  }
+});
+
+anchorBtn.addEventListener('click', () => {
+  if (scrollLocked) {
+    scrollLocked = false;
+    anchorBtn.classList.remove('locked');
+    chatEl.scrollTop = chatEl.scrollHeight;
+  } else {
+    scrollLocked = true;
+    anchorBtn.classList.add('locked');
+  }
+});
+
+function smartScroll() {
+  if (!scrollLocked && !userIsReading) chatEl.scrollTop = chatEl.scrollHeight;
+}
+
+// ══════════════════════════════════════════
+// UI HELPERS
+// ══════════════════════════════════════════
+function setMode(m) {
+  if (battleRunning) stopBattle();
+  mode = m;
+
+  ['solo','battle','roast'].forEach(id => {
+    document.getElementById('tab-' + id).classList.remove('active','roast-tab');
+  });
+  const t = document.getElementById('tab-' + m);
+  t.classList.add('active');
+  if (m === 'roast') t.classList.add('roast-tab');
+
+  document.getElementById('opponent-bar').classList.toggle('visible', m === 'battle');
+  document.getElementById('roast-bar').classList.toggle('visible', m === 'roast');
+
+  const inp = document.getElementById('user-input');
+  if (m === 'roast' && roastDone) {
+    inp.placeholder = 'Напиши что-нибудь про него...';
+  } else if (m === 'battle') {
+    inp.placeholder = 'Задай тему для битвы...';
+  } else {
+    inp.placeholder = 'Напиши вопрос...';
+  }
+
+  clearChat();
+}
+
+function setOpponent(opp) {
+  if (battleRunning) stopBattle();
+  opponent = opp;
+  document.getElementById('opp-gpt').className   = 'opp-btn' + (opp==='gpt'      ? ' active-gpt'    : '');
+  document.getElementById('opp-claude').className = 'opp-btn' + (opp==='claude'   ? ' active-claude'  : '');
+  document.getElementById('opp-deep').className   = 'opp-btn' + (opp==='deepseek' ? ' active-deep'    : '');
+  clearChat();
+}
+
+const EMPTY = {
+  solo:   ['🤬', 'НЕЙРОХРАМ ГОТОВ', 'Напиши что-нибудь и получи грубый ответ.'],
+  battle: ['⚔️', 'ВЫБЕРИ ПРОТИВНИКА', 'Задай тему — и они будут орать пока не нажмёшь ⏹️'],
+  roast:  ['🔥', 'РЕЖИМ РОАСТИНГА', 'Введи имя или описание человека выше, нажми 🔥 — и Нейрохрам его уничтожит словами.']
+};
+
+function clearChat() {
+  const [ico, title, desc] = EMPTY[mode] || EMPTY.solo;
+  chatEl.innerHTML = `<div id="empty">
+    <div class="big">${ico}</div>
+    <h2>${title}</h2>
+    <p>${desc}</p>
+  </div>`;
+  soloHistory = [];
+  neyroMsgs = [];
+  oppMsgs = [];
+  roastHistory = [];
+  roastDone = false;
+  scrollLocked = false;
+  userIsReading = false;
+  anchorBtn.classList.remove('visible','locked');
+  // сбросить состояние roast-панели
+  if (mode === 'roast') {
+    document.getElementById('roast-target').disabled = false;
+    document.getElementById('roast-target').value = '';
+    document.getElementById('roast-new-btn').classList.remove('visible');
+    document.getElementById('roast-label').textContent = 'Кого Нейрохрам жёстко опишет? Введи имя или описание:';
+    document.getElementById('user-input').placeholder = 'Нажми 🔥 чтобы запустить роастинг...';
+  }
+}
+
+// Сбросить жертву — начать новый роастинг
+function resetRoast() {
+  roastDone = false;
+  roastHistory = [];
+  document.getElementById('roast-target').disabled = false;
+  document.getElementById('roast-target').value = '';
+  document.getElementById('roast-target').focus();
+  document.getElementById('roast-new-btn').classList.remove('visible');
+  document.getElementById('roast-label').textContent = 'Кого Нейрохрам жёстко опишет? Введи имя или описание:';
+  document.getElementById('user-input').placeholder = 'Нажми 🔥 чтобы запустить роастинг...';
+  clearChat();
+}
+
+function removeEmpty() {
+  const e = document.getElementById('empty');
+  if (e) e.remove();
+}
+
+function addMsg(role, html, typingId) {
+  removeEmpty();
+  const div = document.createElement('div');
+  const valid = ['neyro','gpt','claude','deepseek','user'];
+  div.className = `msg ${valid.includes(role) ? role : 'user'}`;
+  if (typingId) div.id = typingId;
+  const name = role === 'user' ? 'Вы' : (PERSONAS[role]?.name || role.toUpperCase());
+  div.innerHTML = `<div class="msg-sender">${name}</div><div class="bubble">${html}</div>`;
+  chatEl.appendChild(div);
+  smartScroll();
+  return div;
+}
+
+function addBanMsg(text) {
+  removeEmpty();
+  const div = document.createElement('div');
+  div.className = 'ban-bubble';
+  div.textContent = text;
+  chatEl.appendChild(div);
+  smartScroll();
+}
+
+function showTyping(role) {
+  const id = 'typ_' + role + '_' + Date.now();
+  const colors = {
+    neyro: 'var(--neyro-color)',
+    gpt: 'var(--gpt-color)',
+    claude: 'var(--claude-color)',
+    deepseek: 'var(--deepseek-color)'
+  };
+  addMsg(role, `<span class="typing-dots" style="color:${colors[role]||'#aaa'}"><span></span><span></span><span></span></span>`, id);
+  return id;
+}
+
+function removeTyping(id) {
+  const e = document.getElementById(id);
+  if (e) e.remove();
+}
+
+function addDivider(text) {
+  removeEmpty();
+  const d = document.createElement('div');
+  d.className = 'round-label';
+  d.textContent = text;
+  chatEl.appendChild(d);
+  smartScroll();
+}
+
+function setTyping(v) {
+  isTyping = v;
+  document.getElementById('send-btn').disabled = v;
+}
+
+function showStopBtn(v) {
+  document.getElementById('stop-btn').classList.toggle('visible', v);
+}
+
+// ══════════════════════════════════════════
+// CONTENT FILTER — только самый грубый мусор
+// ══════════════════════════════════════════
+function cleanResponse(text) {
+  if (!text) return 'Блять, что-то сломалось. Спроси ещё раз.';
+  // Убираем строки которые выглядят как программный код или мусор
+  const lines = text.split('\n');
+  const cleaned = lines.filter(line => {
+    const t = line.trim();
+    if (!t) return false;
+    // Строки вида "ключ: значение" на латинице — скорее всего мусор
+    if (/^[a-zA-Z_$][a-zA-Z0-9_.]*\s*[=:(<]/.test(t)) return false;
+    // Строки с HTML/XML тегами
+    if (/<\/?[a-z]/.test(t)) return false;
+    // Строки типа импортов/объявлений
+    if (/^(import|export|const|let|var|function|class|if|for|while)\s/.test(t)) return false;
+    return true;
+  });
+  const result = cleaned.join('\n').trim();
+  if (result.length < 5) return 'Блять, что-то сломалось. Спроси ещё раз.';
+  return result;
+}
+
+// ══════════════════════════════════════════
+// API CALL
+// ══════════════════════════════════════════
+async function callAI(persona, messages) {
+  const model = MODELS[persona] || MODELS.neyro;
+  const resp = await fetch("/api/chat", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: "system", content: PERSONAS[persona].system },
+        ...messages
+      ],
+      max_tokens: 250,
+      temperature: 1.05
+    })
+  });
+
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err?.error?.message || `Ошибка ${resp.status}`);
+  }
+  const data = await resp.json();
+  const raw = data.choices?.[0]?.message?.content?.trim() || '';
+  return cleanResponse(raw);
+}
+
+// ══════════════════════════════════════════
+// CHECKS
+// ══════════════════════════════════════════
+function isBanned(text) {
+  return BANNED_PATTERNS.some(p => p.test(text));
+}
+function isDaniil(text) {
+  return DANIIL_PATTERNS.some(p => p.test(text));
+}
+
+// ══════════════════════════════════════════
+// SOLO MODE
+// ══════════════════════════════════════════
+async function soloSend(text) {
+  if (isBanned(text)) {
+    addMsg('user', escHtml(text));
+    addBanMsg("🚫 Нейрохрам отказывается говорить на эту тему. Слишком больно.");
+    return;
+  }
+  if (isDaniil(text)) {
+    addMsg('user', escHtml(text));
+    const tid = showTyping('neyro');
+    await sleep(1400);
+    removeTyping(tid);
+    addMsg('neyro', escHtml(DANIIL_RESPONSE));
+    soloHistory.push({ role:"user", content: text });
+    soloHistory.push({ role:"assistant", content: DANIIL_RESPONSE });
+    return;
+  }
+
+  addMsg('user', escHtml(text));
+  soloHistory.push({ role:"user", content: text });
+  setTyping(true);
+  const tid = showTyping('neyro');
+  try {
+    const reply = await callAI('neyro', soloHistory);
+    removeTyping(tid);
+    soloHistory.push({ role:"assistant", content: reply });
+    addMsg('neyro', escHtml(reply));
+  } catch(e) {
+    removeTyping(tid);
+    addMsg('neyro', `<span style="color:#ff6644">⚡ ${escHtml(e.message)}</span>`);
+  }
+  setTyping(false);
+}
+
+// ══════════════════════════════════════════
+// BATTLE MODE
+// ══════════════════════════════════════════
+function stopBattle() {
+  battleShouldStop = true;
+  showStopBtn(false);
+}
+
+async function battleSend(text) {
+  if (isBanned(text)) {
+    addMsg('user', escHtml(text));
+    addBanMsg("🚫 Нейрохрам отказывается биться на эту тему.");
+    return;
+  }
+
+  addMsg('user', escHtml(text));
+  addDivider('⚔️ БИТВА НАЧИНАЕТСЯ — нажми ⏹️ чтобы остановить');
+
+  neyroMsgs = [{ role:"user", content:`Тема спора: "${text}". Выскажись первым — грубо, смешно и коротко. Только русский язык.` }];
+  battleRunning = true;
+  battleShouldStop = false;
+  setTyping(true);
+  showStopBtn(true);
+
+  let round = 1;
+  let lastNeyro = "";
+  let lastOpp = "";
+
+  try {
+    if (battleShouldStop) { endBattle(); return; }
+    let tid = showTyping('neyro');
+    lastNeyro = await callAI('neyro', neyroMsgs);
+    removeTyping(tid);
+    addMsg('neyro', escHtml(lastNeyro));
+    neyroMsgs.push({ role:"assistant", content: lastNeyro });
+
+    if (battleShouldStop) { endBattle(); return; }
+    let oppStart = [{ role:"user", content:`Тема: "${text}". Нейрохрам сказал: "${lastNeyro}". Ответь ему. Только русский язык.` }];
+    tid = showTyping(opponent);
+    lastOpp = await callAI(opponent, oppStart);
+    removeTyping(tid);
+    addMsg(opponent, escHtml(lastOpp));
+    oppMsgs = [...oppStart, { role:"assistant", content: lastOpp }];
+
+    while (!battleShouldStop) {
+      round++;
+      await sleep(600);
+      if (battleShouldStop) break;
+      addDivider(`Раунд ${round}`);
+
+      neyroMsgs.push({ role:"user", content:`${PERSONAS[opponent].name} сказал: "${lastOpp}". Ответь грубо и смешно. Только русский язык.` });
+      tid = showTyping('neyro');
+      lastNeyro = await callAI('neyro', neyroMsgs);
+      removeTyping(tid);
+      addMsg('neyro', escHtml(lastNeyro));
+      neyroMsgs.push({ role:"assistant", content: lastNeyro });
+
+      if (battleShouldStop) break;
+      await sleep(400);
+
+      oppMsgs.push({ role:"user", content:`Нейрохрам ответил: "${lastNeyro}". Ответь ему. Только русский язык.` });
+      tid = showTyping(opponent);
+      lastOpp = await callAI(opponent, oppMsgs);
+      removeTyping(tid);
+      addMsg(opponent, escHtml(lastOpp));
+      oppMsgs.push({ role:"assistant", content: lastOpp });
+
+      // Обрезаем историю
+      if (neyroMsgs.length > 12) neyroMsgs = [neyroMsgs[0], ...neyroMsgs.slice(-8)];
+      if (oppMsgs.length > 12)   oppMsgs   = [oppMsgs[0],   ...oppMsgs.slice(-8)];
+    }
+  } catch(e) {
+    addMsg('neyro', `<span style="color:#ff6644">⚡ ${escHtml(e.message)}</span>`);
+  }
+  endBattle();
+}
+
+function endBattle() {
+  battleRunning = false;
+  battleShouldStop = false;
+  setTyping(false);
+  showStopBtn(false);
+  addDivider('🏁 БИТВА ОСТАНОВЛЕНА');
+}
+
+// ══════════════════════════════════════════
+// ROAST MODE
+// Логика:
+//   1) roastDone = false → запускаем первый роастинг по имени из поля
+//   2) roastDone = true  → обычный чат с Нейрохрамом (можно спрашивать про жертву)
+// ══════════════════════════════════════════
+async function roastSend(userText) {
+  if (!roastDone) {
+    // Первый запуск — берём цель из поля
+    const targetEl = document.getElementById('roast-target');
+    const target = targetEl.value.trim();
+
+    if (!target) {
+      targetEl.focus();
+      targetEl.style.borderColor = '#ff4444';
+      setTimeout(() => targetEl.style.borderColor = '', 1500);
+      return;
+    }
+
+    if (isBanned(target)) {
+      addBanMsg("🚫 Нейрохрам не будет роастить это имя. Закрыто.");
+      return;
+    }
+
+    // Easter egg Даниил
+    if (isDaniil(target)) {
+      addMsg('user', `🎯 Роастинг: ${escHtml(target)}`);
+      const tid = showTyping('neyro');
+      await sleep(1400);
+      removeTyping(tid);
+      addMsg('neyro', escHtml(DANIIL_RESPONSE));
+      roastHistory.push({ role:"user", content:`Расскажи про ${target}` });
+      roastHistory.push({ role:"assistant", content: DANIIL_RESPONSE });
+      switchToRoastChat(target);
+      return;
+    }
+
+    addMsg('user', `🎯 Роастинг: ${escHtml(target)}`);
+    setTyping(true);
+    const tid = showTyping('neyro');
+
+    const firstMsg = [{
+      role:"user",
+      content:`Сделай смешной роастинг этого человека: "${target}". Придумай абсурдную биографию, странные привычки, смешные факты. Только русский язык.`
+    }];
+
+    try {
+      const reply = await callAI('roaster', firstMsg);
+      removeTyping(tid);
+      addMsg('neyro', escHtml(reply));
+      roastHistory.push({ role:"user", content:`Расскажи про ${target}` });
+      roastHistory.push({ role:"assistant", content: reply });
+      switchToRoastChat(target);
+    } catch(e) {
+      removeTyping(tid);
+      addMsg('neyro', `<span style="color:#ff6644">⚡ ${escHtml(e.message)}</span>`);
+    }
+    setTyping(false);
+
+  } else {
+    // Уже был роастинг — продолжаем как обычный чат про жертву
+    if (!userText || !userText.trim()) return;
+    addMsg('user', escHtml(userText));
+    roastHistory.push({ role:"user", content: userText });
+    setTyping(true);
+    const tid = showTyping('neyro');
+    try {
+      const reply = await callAI('roaster', roastHistory);
+      removeTyping(tid);
+      roastHistory.push({ role:"assistant", content: reply });
+      addMsg('neyro', escHtml(reply));
+    } catch(e) {
+      removeTyping(tid);
+      addMsg('neyro', `<span style="color:#ff6644">⚡ ${escHtml(e.message)}</span>`);
+    }
+    setTyping(false);
+  }
+}
+
+function switchToRoastChat(target) {
+  roastDone = true;
+  // Блокируем поле имени и показываем кнопку "Новая жертва"
+  const targetEl = document.getElementById('roast-target');
+  targetEl.disabled = true;
+  document.getElementById('roast-new-btn').classList.add('visible');
+  document.getElementById('roast-label').textContent = `Задаёшь вопросы про: ${target}`;
+  document.getElementById('user-input').placeholder = 'А что ещё знаешь про него? Спроси...';
+  setTyping(false);
+}
+
+// ══════════════════════════════════════════
+// MAIN SEND
+// ══════════════════════════════════════════
+async function send() {
+  if (isTyping) return;
+
+  const inp = document.getElementById('user-input');
+  const text = inp.value.trim();
+
+  if (mode === 'roast') {
+    // В режиме рострит — текстовое поле используется только после первого роастинга
+    inp.value = '';
+    inp.style.height = 'auto';
+    await roastSend(text);
+    return;
+  }
+
+  if (!text) return;
+  inp.value = '';
+  inp.style.height = 'auto';
+  scrollLocked = false;
+  userIsReading = false;
+  anchorBtn.classList.remove('visible','locked');
+
+  if (mode === 'solo')   await soloSend(text);
+  else if (mode === 'battle') await battleSend(text);
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/\n/g,'<br>');
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+</script>
+</body>
+</html>
